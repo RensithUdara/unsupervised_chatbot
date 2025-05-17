@@ -10,12 +10,20 @@ def init_db():
             user_input TEXT NOT NULL,
             response TEXT NOT NULL,
             cluster INTEGER,
+            feedback INTEGER,  -- 1 for thumbs-up, -1 for thumbs-down, NULL for no feedback
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
     conn.close()
 
+def log_conversation(user_input, response, feedback=None):
+    conn = sqlite3.connect('conversations.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO conversations (user_input, response, feedback) VALUES (?, ?, ?)',
+                   (user_input, response, feedback))
+    conn.commit()
+    conn.close()
 def log_conversation(user_input, response):
     conn = sqlite3.connect('conversations.db')
     cursor = conn.cursor()

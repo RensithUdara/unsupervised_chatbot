@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Chatbot</title>
 </head>
+
 <body>
     <h1>Chatbot</h1>
     <input type="text" id="message" placeholder="Type your message...">
@@ -18,10 +20,25 @@
             });
             const data = await response.json();
             const chat = document.getElementById('chat');
-            chat.innerHTML += `<p><b>You:</b> ${message}</p>`;
-            chat.innerHTML += `<p><b>Bot:</b> ${data.response}</p>`;
+            const messageId = data.message_id;
+            chat.innerHTML += `
+                <p><b>You:</b> ${message}</p>
+                <p><b>Bot:</b> ${data.response}
+                    <button onclick="sendFeedback(${messageId}, 1)">👍</button>
+                    <button onclick="sendFeedback(${messageId}, -1)">👎</button>
+                </p>`;
             document.getElementById('message').value = '';
+        }
+
+        async function sendFeedback(messageId, feedback) {
+            await fetch('/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message_id: messageId, feedback })
+            });
+            alert('Feedback submitted!');
         }
     </script>
 </body>
+
 </html>

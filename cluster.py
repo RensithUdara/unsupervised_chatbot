@@ -1,21 +1,16 @@
-import os
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 import pandas as pd
-import numpy as np
+from database import get_conversations, update_conversation_clusters
 
 # Load the embedding model
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
 def update_clusters():
     # Load conversation data
-    if not os.path.exists("conversations.csv"):
-        print("No conversation data yet.")
-        return
-
-    df = pd.read_csv("conversations.csv")
+    df = get_conversations()
     if df.empty:
-        print("Conversation data is empty.")
+        print("No conversation data yet.")
         return
 
     # Generate embeddings for user inputs
@@ -26,8 +21,8 @@ def update_clusters():
     kmeans = KMeans(n_clusters=5, random_state=42)
     df["cluster"] = kmeans.fit_predict(embeddings)
 
-    # Save updated data with cluster labels
-    df.to_csv("conversations.csv", index=False)
+    # Update database with cluster labels
+    update_conversation_clusters(df)
     print("Clusters updated!")
 
     # Print cluster summaries (optional)

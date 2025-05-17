@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from chatbot import get_response
+from database import init_db
 
 app = Flask(__name__)
 
@@ -16,4 +17,5 @@ def chat():
     return jsonify({"response": response})
 
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True)

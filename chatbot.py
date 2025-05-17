@@ -1,31 +1,48 @@
-from transformers import pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
 import numpy as np
 import os
+from database import get_conversations, log_conversation
 
-# Initialize models
-chatbot = pipeline("text2text-generation", model="facebook/blenderbot-400M-distill")
+# Initialize embedding model
 embedder = SentenceTransformer('all-MiniLM-L6-v2')
-CONVERSATION_LOG = "conversations.csv"
 
-def log_conversation(user_input, response):
-    data = {"user_input": user_input, "response": response}
-    df = pd.DataFrame([data])
-    if os.path.exists(CONVERSATION_LOG):
-        df.to_csv(CONVERSATION_LOG, mode='a', header=False, index=False)
+# Initialize conversational model
+model_path = "./finetuned_model"
+model_name = "facebook/blenderbot-400M-distill"
+
+try:
+    if os.path.exists(model_path):
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        print("Loaded fine-tuned model.")
     else:
-        df.to_csv(CONVERSATION_LOG, index=False)
+        raise FileNotFoundError("Fine-tuned model not found.")
+except Exception as e:
+    print(f"Failed to load fine-tuned model: {e}. Using default model.")
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+def generate_response(user_input):
+    # Tokenize input and generate response
+    inputs = tokenizer(user_input, return_tensors="pt", padding=True, truncation=True, max_length=128)
+    outputs = model.generate(
+        **inputs,
+        max_length=128,
+        num_beams=4,
+        length_penalty=0.6,
+        no_repeat_ngram_size=3,
+        early_stopping=True
+    )
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
 def get_cluster_response(user_input):
-    if not os.path.exists(CONVERSATION_LOG):
-        return chatbot(user_input)[-1]['generated_text']
-
     # Load conversation data
-    df = pd.read_csv(CONVERSATION_LOG)
-    if df.empty or "cluster" not in df.columns:
-        return chatbot(user_input)[-1]['generated_text']
+    df = get_conversations()
+    if df.empty or "cluster" not in df.columns or df["cluster"].isna().all():
+        return generate_response(user_input)
 
     # Embed user input
     user_embedding = embedder.encode([user_input])
@@ -42,8 +59,8 @@ def get_cluster_response(user_input):
     # Get a response from the same cluster
     cluster_responses = df[df["cluster"] == closest_cluster]["response"].tolist()
     if cluster_responses:
-        return cluster_responses[0]  # Return first response in cluster
-    return chatbot(user_input)[-1]['generated_text']
+        return cluster_responses[0]
+    return generate_response(user_input)
 
 def get_response(user_input):
     response = get_cluster_response(user_input)
@@ -51,6 +68,8 @@ def get_response(user_input):
     return response
 
 if __name__ == "__main__":
+    from database import init_db
+    init_db()  # Ensure database is initialized
     while True:
         user_input = input("You: ")
         if user_input.lower() == 'exit':
