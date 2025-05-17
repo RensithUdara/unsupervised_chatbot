@@ -1,3 +1,4 @@
+import os
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 import pandas as pd
