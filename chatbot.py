@@ -1,17 +1,16 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import pipeline
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
+import numpy as np
 import os
 
-# Initialize the model and tokenizer
-model_name = "facebook/blenderbot-400M-distill"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
-
-# File to store conversations
+# Initialize models
+chatbot = pipeline("text2text-generation", model="facebook/blenderbot-400M-distill")
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
 CONVERSATION_LOG = "conversations.csv"
 
 def log_conversation(user_input, response):
-    # Create or append to CSV
     data = {"user_input": user_input, "response": response}
     df = pd.DataFrame([data])
     if os.path.exists(CONVERSATION_LOG):
@@ -19,25 +18,36 @@ def log_conversation(user_input, response):
     else:
         df.to_csv(CONVERSATION_LOG, index=False)
 
+def get_cluster_response(user_input):
+    if not os.path.exists(CONVERSATION_LOG):
+        return chatbot(user_input)[-1]['generated_text']
+
+    # Load conversation data
+    df = pd.read_csv(CONVERSATION_LOG)
+    if df.empty or "cluster" not in df.columns:
+        return chatbot(user_input)[-1]['generated_text']
+
+    # Embed user input
+    user_embedding = embedder.encode([user_input])
+
+    # Embed stored inputs
+    stored_inputs = df["user_input"].tolist()
+    stored_embeddings = embedder.encode(stored_inputs)
+
+    # Find closest cluster
+    similarities = cosine_similarity(user_embedding, stored_embeddings)[0]
+    closest_idx = np.argmax(similarities)
+    closest_cluster = df.iloc[closest_idx]["cluster"]
+
+    # Get a response from the same cluster
+    cluster_responses = df[df["cluster"] == closest_cluster]["response"].tolist()
+    if cluster_responses:
+        return cluster_responses[0]  # Return first response in cluster
+    return chatbot(user_input)[-1]['generated_text']
+
 def get_response(user_input):
-    # Encode the input
-    inputs = tokenizer(user_input, return_tensors="pt", padding=True)
-    
-    # Generate response
-    outputs = model.generate(
-        inputs["input_ids"],
-        max_length=50,
-        num_return_sequences=1,
-        pad_token_id=tokenizer.pad_token_id,
-        eos_token_id=tokenizer.eos_token_id
-    )
-    
-    # Decode the response
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
-    # Log the conversation
+    response = get_cluster_response(user_input)
     log_conversation(user_input, response)
-    
     return response
 
 if __name__ == "__main__":
