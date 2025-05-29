@@ -18,7 +18,7 @@ def update_clusters():
     embeddings = embedder.encode(inputs)
 
     # Cluster inputs (e.g., 5 clusters)
-    kmeans = KMeans(n_clusters=5, random_state=42)
+    kmeans = KMeans(n_clusters=10, random_state=42)
     df["cluster"] = kmeans.fit_predict(embeddings)
 
     # Update database with cluster labels
