@@ -42,14 +42,14 @@ def fine_tune_model():
 
     # Define training arguments
     training_args = TrainingArguments(
-        output_dir="./finetuned_model",
-        num_train_epochs=3,
-        per_device_train_batch_size=4,
-        save_steps=500,
-        save_total_limit=2,
-        logging_dir="./logs",
-        logging_steps=100,
-    )
+    output_dir="./finetuned_model",
+    num_train_epochs=5,  # Increased from 3
+    per_device_train_batch_size=4,
+    save_steps=500,
+    save_total_limit=2,
+    logging_dir="./logs",
+    logging_steps=100,
+)
 
     # Initialize Trainer
     trainer = Trainer(
