@@ -24,16 +24,10 @@ def log_conversation(user_input, response, feedback=None):
                    (user_input, response, feedback))
     conn.commit()
     conn.close()
-def log_conversation(user_input, response):
-    conn = sqlite3.connect('conversations.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO conversations (user_input, response) VALUES (?, ?)', (user_input, response))
-    conn.commit()
-    conn.close()
 
 def get_conversations():
     conn = sqlite3.connect('conversations.db')
-    df = pd.read_sql_query('SELECT user_input, response, cluster FROM conversations', conn)
+    df = pd.read_sql_query('SELECT user_input, response, cluster, feedback FROM conversations', conn)
     conn.close()
     return df
 
