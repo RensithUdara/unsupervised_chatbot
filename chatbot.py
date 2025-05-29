@@ -56,15 +56,18 @@ def get_cluster_response(user_input):
     closest_idx = np.argmax(similarities)
     closest_cluster = df.iloc[closest_idx]["cluster"]
 
-    # Get a response from the same cluster
-    cluster_responses = df[df["cluster"] == closest_cluster]["response"].tolist()
-    if cluster_responses:
-        return cluster_responses[0]
+    # Prioritize responses with positive feedback
+    cluster_df = df[df["cluster"] == closest_cluster]
+    positive_responses = cluster_df[cluster_df["feedback"] == 1]["response"].tolist()
+    if positive_responses:
+        return positive_responses[0]
+    if cluster_df["response"].tolist():
+        return cluster_df["response"].iloc[0]
     return generate_response(user_input)
 
-def get_response(user_input):
+def get_response(user_input, feedback=None):
     response = get_cluster_response(user_input)
-    log_conversation(user_input, response)
+    log_conversation(user_input, response, feedback)
     return response
 
 if __name__ == "__main__":
