@@ -1,4 +1,3 @@
-import utils.session
 from flask import Flask, request, jsonify, render_template
 from chatbot import get_response
 from database import init_db
